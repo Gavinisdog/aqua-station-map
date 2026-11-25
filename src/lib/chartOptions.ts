@@ -1,10 +1,13 @@
 import { ALERT_LEVELS } from "@/lib/alertStatus";
-import { HOUR_MS } from "@/lib/config";
+import { HOUR_MS, MINUTE_MS } from "@/lib/config";
 import type { WaterLevelReading } from "@/lib/realtime";
 import type { AlertThresholds } from "@/types/station";
 import type { EChartsCoreOption } from "echarts/core";
 
-export const CHART_WINDOW_MS = 25 * HOUR_MS;
+/** Time axis: margin on each side of the readings, and the narrowest window shown. */
+export const MIN_TIME_PADDING_MS = 10 * MINUTE_MS;
+export const MIN_TIME_SPAN_MS = HOUR_MS;
+const TIME_PADDING_RATIO = 0.1;
 export const WATER_LEVEL_COLOR = "#2166ac";
 
 export type AxisRange = { min: number; max: number };
@@ -44,20 +47,30 @@ export function waterLevelAxisRange(
 }
 
 /**
- * Explicit x range (ms): with few points ECharts pads the time axis by ±1 day, running into
- * tomorrow. min = min(now − 25 h, earliest point); max = max(now, latest point).
+ * Explicit x range (ms) fitted to the readings: ECharts would otherwise pad a sparse time axis
+ * by ±1 day. Each side gets 10% of the data span (at least 10 min); the window is at least
+ * 1 h, centered on the data. No readings → the last hour.
  */
 export function timeAxisRange(
   levels: WaterLevelReading[],
   now: number,
 ): AxisRange {
-  let min = now - CHART_WINDOW_MS;
-  let max = now;
-  for (const { observedAt: time } of levels) {
-    if (time < min) min = time;
-    if (time > max) max = time;
-  }
-  return { min, max };
+  if (levels.length === 0) return { min: now - MIN_TIME_SPAN_MS, max: now };
+  const times = levels.map((reading) => reading.observedAt);
+  const earliest = Math.min(...times);
+  const latest = Math.max(...times);
+  const padding = Math.max(
+    (latest - earliest) * TIME_PADDING_RATIO,
+    MIN_TIME_PADDING_MS,
+  );
+  const min = earliest - padding;
+  const max = latest + padding;
+  if (max - min >= MIN_TIME_SPAN_MS) return { min, max };
+  const middle = (earliest + latest) / 2;
+  return {
+    min: middle - MIN_TIME_SPAN_MS / 2,
+    max: middle + MIN_TIME_SPAN_MS / 2,
+  };
 }
 
 export type StationChartInput = {
@@ -116,7 +129,14 @@ export function buildStationChartOption({
       },
       { type: "slider", height: 16, bottom: 8 },
     ],
-    xAxis: { type: "time", ...timeAxisRange(levels, now) },
+    // Short windows: label at most every 10 min and drop labels that would still collide.
+    xAxis: {
+      type: "time",
+      ...timeAxisRange(levels, now),
+      minInterval: MIN_TIME_PADDING_MS,
+      splitNumber: 4,
+      axisLabel: { hideOverlap: true },
+    },
     yAxis: {
       type: "value",
       name: "m",
