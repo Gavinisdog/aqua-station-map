@@ -1,38 +1,46 @@
-import type { EChartsCoreOption } from 'echarts/core'
-import type { AlertThresholds } from '@/types/station'
-import { ALERT_LEVELS } from '@/lib/alertStatus'
-import { HOUR_MS } from '@/lib/config'
-import type { RainfallPoint } from '@/lib/rainfall'
-import type { WaterLevelReading } from '@/lib/realtime'
+import { ALERT_LEVELS } from "@/lib/alertStatus";
+import { HOUR_MS } from "@/lib/config";
+import type { WaterLevelReading } from "@/lib/realtime";
+import type { AlertThresholds } from "@/types/station";
+import type { EChartsCoreOption } from "echarts/core";
 
-export const CHART_WINDOW_MS = 25 * HOUR_MS
-export const WATER_LEVEL_COLOR = '#2166ac'
-export const RAINFALL_BAR_COLOR = 'rgba(67, 147, 195, 0.55)'
+export const CHART_WINDOW_MS = 25 * HOUR_MS;
+export const WATER_LEVEL_COLOR = "#2166ac";
 
-export type AxisRange = { min: number; max: number }
+export type AxisRange = { min: number; max: number };
 
-const roundToCm = (meters: number) => Math.round(meters * 100) / 100
+const roundToCm = (meters: number) => Math.round(meters * 100) / 100;
 
 function activeAlertLines(thresholds: AlertThresholds) {
   return ALERT_LEVELS.flatMap((level) => {
-    const value = thresholds[level.key]
-    return value === null ? [] : [{ label: level.label, color: level.lineColor, value }]
-  })
+    const value = thresholds[level.key];
+    return value === null
+      ? []
+      : [{ label: level.label, color: level.lineColor, value }];
+  });
 }
 
 /**
  * Y range (m) over the water levels and the alert lines: markLine values do not widen the
  * axis by themselves. Padded by 10% (at least 0.2 m), rounded to cm.
  */
-export function waterLevelAxisRange(levels: WaterLevelReading[], thresholds: AlertThresholds): AxisRange {
+export function waterLevelAxisRange(
+  levels: WaterLevelReading[],
+  thresholds: AlertThresholds,
+): AxisRange {
   const values = [
-    ...levels.flatMap((reading) => (reading.waterLevelM === null ? [] : [reading.waterLevelM])),
+    ...levels.flatMap((reading) =>
+      reading.waterLevelM === null ? [] : [reading.waterLevelM],
+    ),
     ...activeAlertLines(thresholds).map((line) => line.value),
-  ]
-  const minLevel = values.length ? Math.min(...values) : 0
-  const maxLevel = values.length ? Math.max(...values) : 1
-  const axisPadding = Math.max((maxLevel - minLevel) * 0.1, 0.2)
-  return { min: roundToCm(minLevel - axisPadding), max: roundToCm(maxLevel + axisPadding) }
+  ];
+  const minLevel = values.length ? Math.min(...values) : 0;
+  const maxLevel = values.length ? Math.max(...values) : 1;
+  const axisPadding = Math.max((maxLevel - minLevel) * 0.1, 0.2);
+  return {
+    min: roundToCm(minLevel - axisPadding),
+    max: roundToCm(maxLevel + axisPadding),
+  };
 }
 
 /**
@@ -41,39 +49,35 @@ export function waterLevelAxisRange(levels: WaterLevelReading[], thresholds: Ale
  */
 export function timeAxisRange(
   levels: WaterLevelReading[],
-  rainfall: RainfallPoint[] | null,
   now: number,
 ): AxisRange {
-  const times = [
-    ...levels.map((reading) => reading.observedAt),
-    ...(rainfall ?? []).map((point) => point.observedAt),
-  ]
-  let min = now - CHART_WINDOW_MS
-  let max = now
-  for (const time of times) {
-    if (time < min) min = time
-    if (time > max) max = time
+  let min = now - CHART_WINDOW_MS;
+  let max = now;
+  for (const { observedAt: time } of levels) {
+    if (time < min) min = time;
+    if (time > max) max = time;
   }
-  return { min, max }
+  return { min, max };
 }
 
 export type StationChartInput = {
-  thresholds: AlertThresholds
-  history: WaterLevelReading[]
-  /** Drawn (with its own axis) only when non-empty; pass null to hide it. */
-  rainfall: RainfallPoint[] | null
-  now: number
-}
+  thresholds: AlertThresholds;
+  history: WaterLevelReading[];
+  now: number;
+};
 
-export function buildStationChartOption({ thresholds, history, rainfall, now }: StationChartInput): EChartsCoreOption {
-  const levels = history.filter((reading) => reading.waterLevelM !== null)
-  const shownRainfall = rainfall?.length ? rainfall : null
-  const levelRange = waterLevelAxisRange(levels, thresholds)
+export function buildStationChartOption({
+  thresholds,
+  history,
+  now,
+}: StationChartInput): EChartsCoreOption {
+  const levels = history.filter((reading) => reading.waterLevelM !== null);
+  const levelRange = waterLevelAxisRange(levels, thresholds);
 
   const series: EChartsCoreOption[] = [
     {
-      name: '水位',
-      type: 'line',
+      name: "水位",
+      type: "line",
       yAxisIndex: 0,
       showSymbol: levels.length < 30,
       symbolSize: 5,
@@ -82,47 +86,43 @@ export function buildStationChartOption({ thresholds, history, rainfall, now }: 
       data: levels.map((reading) => [reading.observedAt, reading.waterLevelM]),
       markLine: {
         silent: true,
-        symbol: 'none',
+        symbol: "none",
         data: activeAlertLines(thresholds).map((line) => ({
           name: line.label,
           yAxis: line.value,
-          lineStyle: { color: line.color, type: 'dashed', width: 1.5 },
-          label: { formatter: `${line.label} ${line.value} m`, color: line.color, position: 'insideEndTop' },
+          lineStyle: { color: line.color, type: "dashed", width: 1.5 },
+          label: {
+            formatter: `${line.label} ${line.value} m`,
+            color: line.color,
+            position: "insideEndTop",
+          },
         })),
       },
     },
-  ]
-  if (shownRainfall) {
-    series.push({
-      name: '上游雨量',
-      type: 'bar',
-      yAxisIndex: 1,
-      barMaxWidth: 8,
-      itemStyle: { color: RAINFALL_BAR_COLOR },
-      data: shownRainfall.map((point) => [point.observedAt, point.rainfallMm]),
-    })
-  }
+  ];
 
   return {
     animation: false,
-    grid: { left: 52, right: shownRainfall ? 48 : 16, top: 32, bottom: 56 },
+    grid: { left: 52, right: 16, top: 32, bottom: 56 },
     legend: { top: 0, data: series.map((entry) => entry.name as string) },
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: "axis" },
     // Ctrl+wheel only and no drag-pan, so wheel/touch still scroll the bottom sheet.
     dataZoom: [
-      { type: 'inside', zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: false, moveOnMouseMove: false },
-      { type: 'slider', height: 16, bottom: 8 },
-    ],
-    xAxis: { type: 'time', ...timeAxisRange(levels, shownRainfall, now) },
-    yAxis: [
       {
-        type: 'value',
-        name: 'm',
-        ...levelRange,
-        axisLabel: { formatter: (value: number) => value.toFixed(1) },
+        type: "inside",
+        zoomOnMouseWheel: "ctrl",
+        moveOnMouseWheel: false,
+        moveOnMouseMove: false,
       },
-      { type: 'value', name: 'mm', show: !!shownRainfall, inverse: true, splitLine: { show: false }, min: 0 },
+      { type: "slider", height: 16, bottom: 8 },
     ],
+    xAxis: { type: "time", ...timeAxisRange(levels, now) },
+    yAxis: {
+      type: "value",
+      name: "m",
+      ...levelRange,
+      axisLabel: { formatter: (value: number) => value.toFixed(1) },
+    },
     series,
-  }
+  };
 }

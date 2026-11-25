@@ -15,7 +15,7 @@ declare module 'axios' {
 
 export const HTTP_TIMEOUT_MS = 30_000
 
-// No baseURL: realtime hits WRA directly, rainfall goes through the same-origin /wra-rain proxy.
+// No baseURL: realtime hits WRA directly; stations.geojson is a same-origin static file.
 const instance = axios.create({ timeout: HTTP_TIMEOUT_MS })
 
 /** Tracking / cancelPrevious key: "method path", query string stripped. */

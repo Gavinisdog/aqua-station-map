@@ -6,15 +6,11 @@ import StationMap from '@/components/StationMap.vue'
 import StationPanel from '@/components/StationPanel.vue'
 import { prefetchStationChart } from '@/components/loadStationChart'
 import { useRealtimeWaterLevels } from '@/composables/useRealtimeWaterLevels'
-import { useStationRainfall } from '@/composables/useStationRainfall'
 import { useStations } from '@/composables/useStations'
 import { formatTime } from '@/lib/format'
 
 const { stations, stationById, loadFailed: stationsLoadFailed } = useStations()
 const selectedId = ref<string | null>(null)
-
-const { rainfall, rainfallLoadState, refreshSelected: refreshSelectedRainfall } =
-  useStationRainfall(selectedId)
 
 const {
   readings,
@@ -22,7 +18,7 @@ const {
   selectedHistory,
   lastUpdated,
   error: realtimeError,
-} = useRealtimeWaterLevels(stationById, selectedId, { onUpdate: refreshSelectedRainfall })
+} = useRealtimeWaterLevels(stationById, selectedId)
 
 const selectedStation = computed(() =>
   selectedId.value ? stationById.value.get(selectedId.value) : undefined,
@@ -79,8 +75,6 @@ watch(
         :reading="readings.get(selectedStation.id)"
         :status="statusById.get(selectedStation.id) ?? 'noData'"
         :history="selectedHistory"
-        :rainfall="rainfall"
-        :rainfall-load-state="rainfallLoadState"
         @close="selectedId = null"
       />
     </main>

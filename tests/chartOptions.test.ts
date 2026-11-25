@@ -14,17 +14,14 @@ const noThresholds = { alert1: null, alert2: null, alert3: null }
 describe('timeAxisRange', () => {
   it('few recent points -> window is now − 25 h .. now', () => {
     expect(CHART_WINDOW_MS).toBe(25 * HOUR_MS)
-    expect(timeAxisRange([reading(1.2)], null, now)).toEqual({ min: now - 25 * HOUR_MS, max: now })
-    expect(timeAxisRange([], null, now)).toEqual({ min: now - 25 * HOUR_MS, max: now })
+    expect(timeAxisRange([reading(1.2)], now)).toEqual({ min: now - 25 * HOUR_MS, max: now })
+    expect(timeAxisRange([], now)).toEqual({ min: now - 25 * HOUR_MS, max: now })
   })
-  it('points outside the window (levels or rainfall) widen it', () => {
+  it('readings outside the window widen it', () => {
     const older = now - 30 * HOUR_MS
     const later = now + HOUR_MS
-    expect(timeAxisRange([reading(1, older)], null, now)).toEqual({ min: older, max: now })
-    expect(timeAxisRange([], [{ observedAt: later, rainfallMm: 0.5 }], now)).toEqual({
-      min: now - 25 * HOUR_MS,
-      max: later,
-    })
+    expect(timeAxisRange([reading(1, older)], now)).toEqual({ min: older, max: now })
+    expect(timeAxisRange([reading(1, later)], now)).toEqual({ min: now - 25 * HOUR_MS, max: later })
   })
 })
 
@@ -53,25 +50,15 @@ const build = (overrides: Partial<Parameters<typeof buildStationChartOption>[0]>
   buildStationChartOption({
     thresholds: noThresholds,
     history: [reading(1.2)],
-    rainfall: null,
     now,
     ...overrides,
   }) as unknown as ChartOption
 
 describe('buildStationChartOption', () => {
-  it('rainfall null or empty -> no bar series, narrow right grid', () => {
-    for (const rainfall of [null, []]) {
-      const option = build({ rainfall })
-      expect(option.series.map((series) => series.type)).toEqual(['line'])
-      expect(option.grid.right).toBe(16)
-    }
-  })
-  it('with rainfall -> a bar series on the second y axis', () => {
-    const option = build({ rainfall: [{ observedAt: now - HOUR_MS, rainfallMm: 2 }] })
-    const bars = option.series.filter((series) => series.type === 'bar')
-    expect(bars).toHaveLength(1)
-    expect(bars[0].yAxisIndex).toBe(1)
-    expect(option.grid.right).toBe(48)
+  it('draws a single water-level line series on one y axis', () => {
+    const option = build()
+    expect(option.series.map((series) => [series.type, series.yAxisIndex])).toEqual([['line', 0]])
+    expect(option.grid.right).toBe(16)
   })
   it('markLine has one entry per non-null threshold, with label and value', () => {
     const option = build({ thresholds: { alert1: 5.8, alert2: null, alert3: 3.2 } })

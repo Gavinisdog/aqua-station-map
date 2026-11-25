@@ -12,8 +12,6 @@ import {
 } from '@/components/ui/card'
 import { ALERT_LEVELS, ALERT_STATUS_META, type AlertStatus } from '@/lib/alertStatus'
 import { formatLevel, formatTime } from '@/lib/format'
-import type { RainfallPoint } from '@/lib/rainfall'
-import type { RainfallLoadState } from '@/lib/rainfallLoadState'
 import type { WaterLevelReading } from '@/lib/realtime'
 import type { StationProps } from '@/lib/stations'
 import { AsyncStationChart as StationChart } from '@/components/loadStationChart'
@@ -23,8 +21,6 @@ defineProps<{
   reading: WaterLevelReading | undefined
   status: AlertStatus
   history: WaterLevelReading[]
-  rainfall: RainfallPoint[] | null
-  rainfallLoadState: RainfallLoadState
 }>()
 defineEmits<{ close: [] }>()
 </script>
@@ -60,12 +56,7 @@ defineEmits<{ close: [] }>()
             <dt class="text-muted-foreground">{{ level.shortLabel }}</dt><dd>{{ formatLevel(station[level.key]) }}</dd>
           </div>
         </dl>
-        <StationChart
-          :station="station"
-          :history="history"
-          :rainfall="rainfall"
-          :rainfall-load-state="rainfallLoadState"
-        />
+        <StationChart :station="station" :history="history" />
       </CardContent>
     </Card>
   </aside>

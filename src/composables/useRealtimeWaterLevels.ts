@@ -11,13 +11,11 @@ const STATUS_CLOCK_INTERVAL_MS = MINUTE_MS
 
 /**
  * Polls the realtime water-level snapshot, accumulates per-station history and derives each
- * station's alert status and the selected station's history. `onUpdate` runs after every
- * successful poll.
+ * station's alert status and the selected station's history.
  */
 export function useRealtimeWaterLevels(
   stationById: Ref<Map<string, StationProps>>,
   selectedId: Ref<string | null>,
-  { onUpdate }: { onUpdate?: () => void } = {},
 ) {
   const readings = shallowRef(new Map<string, WaterLevelReading>())
   const historyByStation = new Map<string, WaterLevelReading[]>() // mutated in place by appendToHistory
@@ -37,7 +35,6 @@ export function useRealtimeWaterLevels(
       readings.value = new Map([...readings.value, ...latestReadings])
       statusClock.value = Date.now()
       historyVersion.value++
-      onUpdate?.()
     },
     POLL_INTERVAL_MS,
   )
