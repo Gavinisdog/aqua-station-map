@@ -1,21 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import MapLegend from '@/components/MapLegend.vue'
 import MapNotice from '@/components/MapNotice.vue'
 import StationMap from '@/components/StationMap.vue'
+import StationPanel from '@/components/StationPanel.vue'
 import { useRealtimeWaterLevels } from '@/composables/useRealtimeWaterLevels'
+import { useStationRainfall } from '@/composables/useStationRainfall'
 import { useStations } from '@/composables/useStations'
 import { formatTime } from '@/lib/format'
 
 const { stations, stationById, loadFailed: stationsLoadFailed } = useStations()
 const selectedId = ref<string | null>(null)
 
+const { rainfall, rainfallLoadState, refreshSelected: refreshSelectedRainfall } =
+  useStationRainfall(selectedId)
+
 const {
   readings,
   statusById,
+  selectedHistory,
   lastUpdated,
   error: realtimeError,
-} = useRealtimeWaterLevels(stationById, selectedId)
+} = useRealtimeWaterLevels(stationById, selectedId, { onUpdate: refreshSelectedRainfall })
+
+const selectedStation = computed(() =>
+  selectedId.value ? stationById.value.get(selectedId.value) : undefined,
+)
 </script>
 
 <template>
@@ -51,6 +61,16 @@ const {
       <MapLegend />
       <MapNotice v-if="!stations && !stationsLoadFailed">載入測站中…</MapNotice>
       <MapNotice v-if="stationsLoadFailed" tone="error">測站資料載入失敗，請重新整理</MapNotice>
+      <StationPanel
+        v-if="selectedStation"
+        :station="selectedStation"
+        :reading="readings.get(selectedStation.id)"
+        :status="statusById.get(selectedStation.id) ?? 'noData'"
+        :history="selectedHistory"
+        :rainfall="rainfall"
+        :rainfall-load-state="rainfallLoadState"
+        @close="selectedId = null"
+      />
     </main>
   </div>
 </template>
