@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/wra-rain",
+      "destination": "https://opendata.wra.gov.tw/api/v2/a3c4b6e0-7a21-4d8f-9c3b-2e5f6a1b8c77?format=JSON&page=1&size=5000"
+    }
+  ]
+}
