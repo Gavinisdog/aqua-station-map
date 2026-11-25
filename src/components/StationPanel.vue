@@ -16,7 +16,7 @@ import type { RainfallPoint } from '@/lib/rainfall'
 import type { RainfallLoadState } from '@/lib/rainfallLoadState'
 import type { WaterLevelReading } from '@/lib/realtime'
 import type { StationProps } from '@/lib/stations'
-import StationChart from '@/components/StationChart.vue'
+import { AsyncStationChart as StationChart } from '@/components/loadStationChart'
 
 defineProps<{
   station: StationProps

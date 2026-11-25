@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import MapLegend from '@/components/MapLegend.vue'
 import MapNotice from '@/components/MapNotice.vue'
 import StationMap from '@/components/StationMap.vue'
 import StationPanel from '@/components/StationPanel.vue'
+import { prefetchStationChart } from '@/components/loadStationChart'
 import { useRealtimeWaterLevels } from '@/composables/useRealtimeWaterLevels'
 import { useStationRainfall } from '@/composables/useStationRainfall'
 import { useStations } from '@/composables/useStations'
@@ -25,6 +26,17 @@ const {
 
 const selectedStation = computed(() =>
   selectedId.value ? stationById.value.get(selectedId.value) : undefined,
+)
+
+// Once the station load settles (map up, or failed), warm the ECharts chunk in idle time so
+// the first station click is instant.
+watch(
+  () => stations.value !== null || stationsLoadFailed.value,
+  () => {
+    const whenIdle = window.requestIdleCallback ?? ((callback: () => void) => setTimeout(callback, 1))
+    whenIdle(() => prefetchStationChart())
+  },
+  { once: true },
 )
 </script>
 

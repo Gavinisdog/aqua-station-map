@@ -4,9 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>河川水位測站地圖</title>
+    <!-- Open connections early: realtime water levels (CORS XHR) and map tiles (images). -->
+    <link rel="preconnect" href="https://opendata.wra.gov.tw" crossorigin />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <!-- Download station points in parallel with the JS bundle instead of after it. -->
+    <link rel="preload" href="/stations.geojson" as="fetch" type="application/geo+json" crossorigin="anonymous" />
   </head>
   <body>
-    <div id="app"></div>
+    <!-- Static shell: painted as soon as HTML + CSS arrive; Vue replaces it on mount. -->
+    <div id="app">
+      <div class="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+        <header class="relative z-1100 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b bg-background px-4 py-2">
+          <div class="min-w-0">
+            <h1 class="text-lg font-bold">河川水位測站地圖</h1>
+            <p class="text-xs text-muted-foreground">資料來源：經濟部水利署 開放資料</p>
+          </div>
+        </header>
+        <main class="flex flex-1 items-center justify-center bg-muted text-sm text-muted-foreground" role="status">
+          地圖載入中…
+        </main>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
